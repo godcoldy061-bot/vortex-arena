@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vortex Arena 1v1</title>
+    <style>
+        /* Bloqueio total de bordas brancas e travamento de tela */
+        html, body {
+            background-color: #0d0d11 !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            width: 100%;
+            min-height: 100vh;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        
+        body {
+            color: #e3e3e3;
+            font-family: 'Segoe UI', Roboto, sans-serif;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            align-items: center;
+            padding: 40px 20px !important;
+            
+            background-image: 
+                radial-gradient(circle at 50% 30%, rgba(0, 255, 179, 0.15) 0%, transparent 60%),
+                radial-gradient(circle at 50% 80%, rgba(56, 189, 248, 0.08) 0%, transparent 70%),
+                linear-gradient(180deg, #0f1015 0%, #070709 100%);
+            background-attachment: fixed;
+        }
+
+        /* --- MODO DESEMPENHO (LITE MODE) --- */
+        body.lite-mode {
+            background-image: linear-gradient(180deg, #0f1015 0%, #070709 100%) !important;
+        }
+        body.lite-mode .particle,
+        body.lite-mode .intro-title::before,
+        body.lite-mode .intro-title::after { display: none !important; }
+        body.lite-mode .intro-title { animation: none !important; text-shadow: 0 0 10px #00ffb3 !important; }
+        body.lite-mode .match-status { animation: none !important; }
+
+        /* --- TELA DE APRESENTAÇÃO --- */
+        #intro-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100vh;
+            background: #060709;
+            z-index: 9999;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            transition: opacity 0.5s cubic-bezier(0.4, 0, 0.2, 1), transform 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+            overflow: hidden;
+        }
+        .bg-particles { position: absolute; width: 100%; height: 100%; top: 0; left: 0; pointer-events: none; background: radial-gradient(circle at 50% 50%, rgba(0, 255, 179, 0.1) 0%, transparent 60%); }
+        .particle { position: absolute; background: rgba(0, 255, 179, 0.3); box-shadow: 0 0 10px #00ffb3; bottom: -20px; border-radius: 2px; animation: floatUp 6s infinite linear; }
+        .intro-welcome { font-size: 12px; color: #38bdf8; text-transform: uppercase; letter-spacing: 8px; margin-bottom: 2px; font-weight: 800; text-shadow: 0 0 10px rgba(56, 189, 248, 0.4); }
+        .intro-title { font-size: 64px; font-weight: 900; color: #00ffb3; text-transform: uppercase; letter-spacing: 12px; position: relative; text-align: center; text-shadow: 0 0 20px rgba(0, 255, 179, 0.4); animation: glitch 1s linear infinite; }
+        .intro-title::before, .intro-title::after { content: 'Vortex Arena'; position: absolute; left: 0; top: 0; width: 100%; height: 100%; background: #060709; }
+        .intro-title::before { left: 2px; text-shadow: -2px 0 #ff4655; clip: rect(44px, 450px, 56px, 0); animation: glitch-anim 5s infinite linear alternate-reverse; }
+        .intro-title::after { left: -2px; text-shadow: -2px 0 #38bdf8; clip: rect(85px, 450px, 140px, 0); animation: glitch-anim2 5s infinite linear alternate-reverse; }
+        .intro-subtitle { font-size: 14px; color: #64748b; text-transform: uppercase; letter-spacing: 5px; margin-top: 5px; font-weight: 600; }
+        .intro-loader-bar { width: 220px; height: 2px; background: rgba(255, 255, 255, 0.03); margin-top: 25px; position: relative; overflow: hidden; }
+        .intro-loader-bar::after { content: ''; position: absolute; left: -100%; width: 100%; height: 100%; background: linear-gradient(90deg, transparent, #00ffb3, #38bdf8, transparent); animation: loadingSim 1.5s infinite ease-in-out; }
+        .intro-click-text { font-size: 11px; color: #ffffff; text-transform: uppercase; letter-spacing: 4px; margin-top: 50px; background: linear-gradient(90deg, rgba(0,255,179,0.02), rgba(0,255,179,0.1), rgba(0,255,179,0.02)); padding: 10px 24px; border-radius: 50px; border: 1px solid rgba(0, 255, 179, 0.3); box-shadow: 0 0 15px rgba(0, 255, 179, 0.1); animation: blink 1.2s infinite; }
+
+        /* --- INTERFACE DE UTILITÁRIOS SUPERIOR --- */
+        .utility-bar {
+            width: 100%;
+            max-width: 850px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            opacity: 0;
+            transition: opacity 0.5s ease;
+        }
+        body.loaded .utility-bar { opacity: 1; }
+        .sys-status { font-size: 11px; color: #00ffb3; font-weight: bold; letter-spacing: 1px; background: rgba(0, 255, 179, 0.05); padding: 6px 12px; border-radius: 6px; border: 1px solid rgba(0, 255, 179, 0.15); }
+
+        .btn-action {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: #e2e8f0;
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 11px;
+            font-weight: 700;
+            cursor: pointer;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            transition: all 0.2s ease;
+        }
+        .btn-action:hover { background: #fff; color: #000; border-color: #fff; }
+        .btn-perf.active { background: #ff4655 !important; color: #fff !important; border-color: #ff4655 !important; }
+
+        /* --- CARD DE PRÓXIMO CONFRONTO (AJUSTADO: SEM JOGOS) --- */
+        .match-card {
+            width: 100%;
+            max-width: 850px;
+            background: rgba(19, 20, 28, 0.6);
+            border: 1px dashed rgba(255, 255, 255, 0.15);
+            border-radius: 16px;
+            padding: 15px 25px;
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            backdrop-filter: blur(10px);
+            opacity: 0;
+            transform: translateY(-10px);
+            transition: all 0.6s ease 0.1s;
+        }
+        body.loaded .match-card { opacity: 1; transform: translateY(0); }
+        .match-status { font-size: 10px; background: rgba(56, 189, 248, 0.1); color: #38bdf8; padding: 4px 8px; border-radius: 4px; font-weight: 900; letter-spacing: 1.5px; border: 1px solid rgba(56, 189, 248, 0.25); animation: blink 2s infinite; }
+        .match-vs { font-size: 13px; font-weight: 600; color: #94a3b8; letter-spacing: 0.5px; }
+
+        /* --- CONTAINER DA TABELA --- */
+        .container {
+            width: 100%;
+            max-width: 850px;
+            background: rgba(14, 15, 20, 0.96);
+            backdrop-filter: blur(16px);
+            border-radius: 24px;
+            overflow: hidden;
+            border: 1px solid rgba(0, 255, 179, 0.2);
+            box-shadow: 0 40px 90px rgba(0,0,0,0.9), 0 0 50px rgba(0, 255, 179, 0.1);
+            margin-bottom: auto;
+            opacity: 0;
+            transform: scale(0.96) translateY(10px);
+            transition: opacity 0.6s cubic-bezier(0.34, 1.56, 0.64, 1), transform 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+        body.loaded .container { opacity: 1; transform: scale(1) translateY(0); }
+
+        .table-header-box { padding: 35px 30px 20px 30px; border-bottom: 1px solid rgba(255, 255, 255, 0.05); background: linear-gradient(to bottom, rgba(0, 255, 179, 0.03), transparent); }
+        .table-title { font-size: 30px; font-weight: 900; color: #00ffb3; text-transform: uppercase; letter-spacing: 5px; text-shadow: 0 0 15px rgba(0, 255, 179, 0.4); }
+        .table-subtitle { font-size: 11px; color: #38bdf8; text-transform: uppercase; letter-spacing: 3px; margin-top: 6px; font-weight: 700; }
+
+        /* CONTROLES */
+        .table-controls { display: flex; justify-content: space-between; align-items: center; gap: 15px; padding: 15px 30px; background: rgba(255, 255, 255, 0.01); border-bottom: 1px solid rgba(255, 255, 255, 0.03); }
+        .filter-buttons { display: flex; gap: 8px; }
+        .filter-btn { background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.08); color: #94a3b8; padding: 8px 16px; border-radius: 8px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; cursor: pointer; transition: all 0.2s ease; }
+        .filter-btn:hover { background: rgba(0, 255, 179, 0.05); color: #fff; }
+        .filter-btn.active { background: rgba(0, 255, 179, 0.1); border-color: #00ffb3; color: #00ffb3; box-shadow: 0 0 10px rgba(0, 255, 179, 0.15); }
+        .search-box input { background: rgba(7, 7, 9, 0.6); border: 1px solid rgba(255, 255, 255, 0.08); color: #fff; padding: 8px 14px; border-radius: 8px; font-size: 12px; width: 200px; transition: all 0.2s ease; }
+        .search-box input:focus { outline: none; border-color: #38bdf8; box-shadow: 0 0 10px rgba(56, 189, 248, 0.2); }
+
+        /* GRID */
+        .table-wrapper { width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+        table { width: 100%; border-collapse: collapse; font-size: 14px; min-width: 550px; }
+        th { color: #64748b; font-weight: 700; padding: 18px 14px; border-bottom: 2px solid rgba(255, 255, 255, 0.06); font-size: 11px; text-transform: uppercase; letter-spacing: 2px; white-space: nowrap; }
+        td { padding: 16px 14px; border-bottom: 1px solid rgba(255, 255, 255, 0.03); text-align: center; color: #ffffff; white-space: nowrap; transition: all 0.2s ease; }
+        tbody tr { opacity: 0; transform: translateY(15px); }
+        body.loaded tbody tr { opacity: 1; transform: translateY(0); transition: opacity 0.4s ease, transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1); }
+        tr:hover td { background: rgba(0, 255, 179, 0.03); border-top: 1px solid rgba(0, 255, 179, 0.15); border-bottom: 1px solid rgba(0, 255, 179, 0.15); }
+        
+        .col-pos { width: 75px; font-weight: 900; position: relative; font-size: 15px; }
+        tr:nth-child(1) .col-pos::after { content: ' 👑'; font-size: 13px; }
+        tr:nth-child(2) .col-pos::after { content: ' 🥈'; font-size: 13px; }
+        tr:nth-child(3) .col-pos::after { content: ' 🥉'; font-size: 13px; }
+        tr:nth-child(-n+3) .col-pos { color: #00ffb3; text-shadow: 0 0 10px rgba(0, 255, 179, 0.5); }
+        tr:nth-child(-n+3) .col-pos::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 4px; background: #00ffb3; box-shadow: 2px 0 12px #00ffb3; }
+        .name { font-weight: 600; text-align: left; padding-left: 25px; font-size: 15px; letter-spacing: 0.5px; }
+        tr:nth-child(-n+3) .name { color: #00ffb3; }
+        
+        .badge-plat { display: inline-block; padding: 4px 8px; border-radius: 6px; font-size: 10px; font-weight: 800; letter-spacing: 0.5px; }
+        .plat-pc { background: rgba(0, 255, 179, 0.08); color: #00ffb3; border: 1px solid rgba(0, 255, 179, 0.25); }
+        .plat-mobile { background: rgba(168, 85, 247, 0.08); color: #a855f7; border: 1px solid rgba(168, 85, 247, 0.25); }
+        .kills { color: #f59e0b; font-weight: 800; font-size: 15px; }
+        .pts { font-weight: 900; color: #38bdf8; background: rgba(56, 189, 248, 0.05); font-size: 15px; } 
+
+        /* --- FEED DESLIZANTE (NOTÍCIAS DO TORNEIO) --- */
+        .marquee-footer {
+            width: 100%;
+            max-width: 850px;
+            background: rgba(7, 7, 9, 0.8);
+            border: 1px solid rgba(255,255,255,0.03);
+            padding: 10px;
+            border-radius: 10px;
+            margin-top: 25px;
+            overflow: hidden;
+            white-space: nowrap;
+            opacity: 0;
+            transition: opacity 0.5s ease;
+        }
+        body.loaded .marquee-footer { opacity: 1; }
+        .marquee-content { display: inline-block; padding-left: 100%; animation: marqueeData 25s linear infinite; font-size: 11px; color: #64748b; font-weight: bold; letter-spacing: 1px; text-transform: uppercase; }
+        .marquee-content span { color: #00ffb3; margin: 0 20px; }
+
+        .footer-version { margin-top: 15px; font-size: 11px; color: #475569; text-transform: uppercase; letter-spacing: 2px; font-weight: 600; text-align: center; opacity: 0; transition: opacity 1s ease 0.5s; }
+        body.loaded .footer-version { opacity: 1; }
+
+        /* --- POPUP MODAL DE REGRAS --- */
+        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(4, 4, 6, 0.85); backdrop-filter: blur(8px); z-index: 10000; display: flex; justify-content: center; align-items: center; opacity: 0; pointer-events: none; transition: opacity 0.3s ease; }
+        .modal-overlay.active { opacity: 1; pointer-events: auto; }
+        .modal-box { background: #12131a; border: 1px solid #00ffb3; padding: 30px; border-radius: 20px; max-width: 500px; width: 90%; box-shadow: 0 0 30px rgba(0,255,179,0.2); transform: scale(0.9); transition: transform 0.3s ease; }
+        .modal-overlay.active .modal-box { transform: scale(1); }
+        .modal-title { font-size: 20px; font-weight: 900; color: #00ffb3; text-transform: uppercase; letter-spacing: 2px; margin-bottom: 15px; border-bottom: 1px solid rgba(255,255,255,0.08); padding-bottom: 10px; }
+        .modal-rules-list { list-style: none; font-size: 13px; color: #94a3b8; line-height: 1.8; }
+        .modal-rules-list li span { color: #fff; font-weight: bold; }
+        .btn-close-modal { margin-top: 25px; width: 100%; padding: 12px; background: rgba(0, 255, 179, 0.1); border: 1px solid #00ffb3; color: #00ffb3; font-weight: bold; text-transform: uppercase; border-radius: 8px; cursor: pointer; transition: all 0.2s ease; }
+        .btn-close-modal:hover { background: #00ffb3; color: #000; }
+
+        /* --- ANIMAÇÕES --- */
+        @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+        @keyframes loadingSim { 0% { left: -100%; } 50% { left: 100%; } 100% { left: 100%; } }
+        @keyframes floatUp { 0% { transform: translateY(0) rotate(0deg); opacity: 0; } 10% { opacity: 1; } 90% { opacity: 1; } 100% { transform: translateY(-100vh) rotate(360deg); opacity: 0; } }
+        @keyframes marqueeData { 0% { transform: translate3d(0, 0, 0); } 100% { transform: translate3d(-100%, 0, 0); } }
+        @keyframes glitch { 0% { text-shadow: 2px -1px 0 rgba(255,70,85,0.5), -1px 2px 0 rgba(56,189,248,0.5); } 50% { text-shadow: -1px -2px 0 rgba(255,70,85,0.5), 2px 1px 0 rgba(56,189,248,0.5); } 100% { text-shadow: 1px 2px 0 rgba(255,70,85,0.5), -2px -1px 0 rgba(56,189,248,0.5); } }
+        @keyframes glitch-anim { 0% { clip: rect(31px, 9999px, 94px, 0); } 10% { clip: rect(112px, 9999px, 76px, 0); } 30% { clip: rect(85px, 9999px, 5px, 0); } 70% { clip: rect(2px, 9999px, 115px, 0); } 100% { clip: rect(64px, 9999px, 43px, 0); } }
+        @keyframes glitch-anim2 { 0% { clip: rect(76px, 9999px, 116px, 0); } 11% { clip: rect(4px, 9999px, 55px, 0); } 35% { clip: rect(120px, 9999px, 80px, 0); } 80% { clip: rect(95px, 9999px, 10px, 0); } 100% { clip: rect(12px, 9999px, 90px, 0); } }
+
+        /* Responsividade */
+        @media (max-width: 650px) {
+            body { padding: 15px 10px !important; }
+            .intro-title { font-size: 42px; letter-spacing: 6px; }
+            .utility-bar { gap: 8px; }
+            .match-card { padding: 12px 15px; justify-content: center; text-align: center; }
+            .match-status { display: none; }
+            .table-controls { flex-direction: column; align-items: stretch; padding: 15px 20px; gap: 12px; }
+            .search-box input { width: 100%; }
+            .table-header-box { padding: 25px 20px 15px 20px; }
+            .table-title { font-size: 24px; }
+            td, th { padding: 14px 10px; font-size: 13px; }
+            .name { padding-left: 12px; font-size: 13.5px; }
+        }
+    </style>
+</head>
+<body>
+
+    <div id="intro-screen" onclick="startApp()">
+        <div class="bg-particles" id="particles-container"></div>
+        <div class="intro-welcome">LEAGUE SOLO</div>
+        <div class="intro-title">Vortex Arena</div>
+        <div class="intro-subtitle">ARENA 1v1</div>
+        <div class="intro-loader-bar"></div>
+        <div class="intro-click-text">CLIQUE PARA ENTRAR</div>
+    </div>
+
+    <div class="utility-bar">
+        <div class="sys-status">🟢 SERVER: BR-SP | PING: 12ms</div>
+        <div style="display: flex; gap: 6px;">
+            <button class="btn-action" onclick="toggleModal(true)">📋 Regras</button>
+            <button class="btn-action" onclick="shareTable()">🔗 Compartilhar</button>
+            <button class="btn-action btn-perf" id="perfBtn" onclick="togglePerformance()">⚡ Desempenho: OFF</button>
+        </div>
+    </div>
+
+    <div class="match-card">
+        <div class="match-status">AGUARDANDO</div>
+        <div class="match-vs">Nenhum X1 foi agendado para esta rodada ainda. Preparem-se!</div>
+        <div style="font-size: 10px; color: #64748b; font-weight: bold; letter-spacing: 1px;">FASE DE INÍCIO</div>
+    </div>
+
+    <div class="container">
+        <div class="table-header-box">
+            <div class="table-title">Vortex Arena</div>
+            <div class="table-subtitle">Tabela Classificatória Geral • 1v1 Solo</div>
+        </div>
+        
+        <div class="table-controls">
+            <div class="filter-buttons">
+                <button class="filter-btn active" onclick="filterPlatform('all', this)">Todos</button>
+                <button class="filter-btn" onclick="filterPlatform('pc', this)">💻 PC</button>
+                <button class="filter-btn" onclick="filterPlatform('mobile', this)">📱 MOB</button>
+            </div>
+            <div class="search-box">
+                <input type="text" id="tableSearch" onkeyup="searchPlayers()" placeholder="Buscar jogador...">
+            </div>
+        </div>
+
+        <div class="table-wrapper">
+            <table id="arenaTable">
+                <thead>
+                    <tr>
+                        <th>POS</th>
+                        <th style="text-align: left; padding-left: 25px;">JOGADOR SOLO</th>
+                        <th>PLAT</th>
+                        <th>J</th>
+                        <th>V</th>
+                        <th>E</th>
+                        <th>D</th>
+                        <th style="color: #f59e0b;">KILLS</th>
+                        <th style="color: #38bdf8;">PTS</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr data-platform="pc"><td class="col-pos">1º </td><td class="name">King7</td><td><span class="badge-plat plat-pc">💻 PC</span></td><td>0</td><td>0</td><td>0</td><td>0</td><td class="kills">0</td><td class="pts">0</td></tr>
+                    <tr data-platform="pc"><td class="col-pos">2º </td><td class="name">Á</td><td><span class="badge-plat plat-pc">💻 PC</span></td><td>0</td><td>0</td><td>0</td><td>0</td><td class="kills">0</td><td class="pts">0</td></tr>
+                    <tr data-platform="pc"><td class="col-pos">3º </td><td class="name">pirarucu seboso</td><td><span class="badge-plat plat-pc">💻 PC</span></td><td>0</td><td>0</td><td>0</td><td>0</td><td class="kills">0</td><td class="pts">0</td></tr>
+                    <tr data-platform="mobile"><td class="col-pos">4º </td><td class="name">Coldy</td><td><span class="badge-plat plat-mobile">📱 MOB</span></td><td>0</td><td>0</td><td>0</td><td>0</td><td class="kills">0</td><td class="pts">0</td></tr>
+                    <tr data-platform="pc"><td class="col-pos">5º </td><td class="name">arthur_pecinha</td><td><span class="badge-plat plat-pc">💻 PC</span></td><td>0</td><td>0</td><td>0</td><td>0</td><td class="kills">0</td><td class="pts">0</td></tr>
+                    <tr data-platform="mobile"><td class="col-pos">6º </td><td class="name">P
